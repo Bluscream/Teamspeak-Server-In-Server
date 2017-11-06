@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.IO;
 using TS3Client;
@@ -33,12 +32,12 @@ namespace Ts3ClientTests {
                 using (File.Create("ids.txt")) { }
             }
             ids = File.ReadAllLines("ids.txt");
-            //for (int i = 0; i < channels.Length; i++)
-            Parallel.For(0, channels.Length, (i) => {
+            for (int i = 0; i < channels.Length; i++) {
                 var client = new Ts3FullClient(EventDispatchType.DoubleThread);
                 client.OnConnected += Client_OnConnected;
                 client.OnDisconnected += Client_OnDisconnected;
                 client.OnErrorEvent += Client_OnErrorEvent;
+                //client.OnClientMoved += Client_OnClientMoved;
                 var _identity = ids.Select(x => x.Split(',')).ToList();
                 IdentityData ID;
                 try {
@@ -50,11 +49,17 @@ namespace Ts3ClientTests {
                 con = new ConnectionDataFull() { Address = "79.133.54.207:9987", Username = "ChannelWatcher", Identity = ID, Password = "" };
                 client.Connect(con);
                 clients.Add(client);
-                //Thread.Sleep(2500);
-            });
+                Thread.Sleep(2500);
+            }
             Console.WriteLine("End");
             Console.ReadLine();
         }
+
+        /*private static void Client_OnClientMoved(object sender, IEnumerable<ClientMoved> e) {
+            foreach (var client in e) {
+                if (clie)
+            }
+        }*/
 
         private static void Client_OnDisconnected(object sender, DisconnectEventArgs e) {
             int myId = System.Threading.Interlocked.Increment(ref cnt);
@@ -68,12 +73,25 @@ namespace Ts3ClientTests {
             Console.WriteLine("Connected id={0} clid={1}", myId, client.ClientId);
             //var data = client.ClientInfo(client.ClientId);
             var channel = channels[myId].Split(',');
-            client.Send("channelcreate",
-                new CommandParameter("channel_name", channel[0]),
-                new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
-                new CommandParameter("channel_needed_talk_power", channel[2]),
-                new CommandParameter("channel_name_phonetic", channel[3])
-            );
+            try {
+                var response = client.Send("channelcreate",
+                    new CommandParameter("channel_name", channel[0]),
+                    new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
+                    new CommandParameter("channel_needed_talk_power", channel[2]),
+                    new CommandParameter("channel_name_phonetic", channel[3])
+                );
+                Console.WriteLine(response.ToString());
+                return;
+                Thread.Sleep(500);
+                client.Send("setclientchannelgroup",
+                    new CommandParameter("cgid", 11),
+                    new CommandParameter("cid", 1),
+                    new CommandParameter("cldbid", 404954)
+                );
+            } catch (Ts3CommandException) {
+                Console.WriteLine("Error while creating channel " + channel[0]);
+                //client.ClientMove(, Ts3Crypt.HashPassword(channel[1]));
+            }
         }
 
         private static void Client_OnErrorEvent(object sender, CommandError e) {
