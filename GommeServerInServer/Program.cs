@@ -9,7 +9,7 @@ using System.Linq;
 using System.Threading;
 
 // ReSharper disable All
-namespace Ts3ClientTests {
+namespace TS3ServerInServer {
     static class Program {
         static List<Ts3FullClient> clients;
         static int cnt = -1;
@@ -81,6 +81,7 @@ namespace Ts3ClientTests {
                     new CommandParameter("channel_name_phonetic", channel[3])
                 );
                 Console.WriteLine(response.ToString());
+                //var resp = response.ToString();
                 return;
                 Thread.Sleep(500);
                 client.Send("setclientchannelgroup",
@@ -90,7 +91,7 @@ namespace Ts3ClientTests {
                 );
             } catch (Ts3CommandException) {
                 Console.WriteLine("Error while creating channel " + channel[0]);
-                //client.ClientMove(, Ts3Crypt.HashPassword(channel[1]));
+                //client.ClientMove(response., Ts3Crypt.HashPassword(channel[1]));
             }
         }
 
