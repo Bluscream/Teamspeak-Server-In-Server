@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{F3FFC199-E564-4D3B-93EC-D60D26598436}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>GommeServerInServer</RootNamespace>
-    <AssemblyName>GommeServerInServer</AssemblyName>
+    <RootNamespace>TSServerInServer</RootNamespace>
+    <AssemblyName>TSServerInServer</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -47,6 +47,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\TS3AudioBot\TS3Client\TS3Client.csproj">

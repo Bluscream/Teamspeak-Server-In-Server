@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using TS3Client;
@@ -15,7 +15,7 @@ namespace TS3ServerInServer {
         static int cnt = -1;
         static string[] channels;
         static string[] ids;
-        static ConnectionDataFull con;
+        static ConnectionDataFull con = new ConnectionDataFull();
         static void Main() {
             clients = new List<Ts3FullClient>();
             Console.CancelKeyPress += (s, e) => {
@@ -28,7 +28,13 @@ namespace TS3ServerInServer {
                 }
             };
             channels = File.ReadAllLines("chans.txt");
-            if (!File.Exists("ids.txt")) {
+			var _con = channels[0].Split(',');
+			Console.WriteLine(channels[0]);
+			channels = channels.Skip(1).ToArray();
+			con.Address = _con[0];
+			con.Username = _con[1];
+			con.Password = _con[2];
+			if (!File.Exists("ids.txt")) {
                 using (File.Create("ids.txt")) { }
             }
             ids = File.ReadAllLines("ids.txt");
@@ -46,7 +52,7 @@ namespace TS3ServerInServer {
                     ID = Ts3Crypt.GenerateNewIdentity(26);
                     File.AppendAllText("ids.txt", ID.PrivateKeyString + "," + ID.ValidKeyOffset + "\r\n");
                 }
-                con = new ConnectionDataFull() { Address = "79.133.54.207:9987", Username = "ChannelWatcher", Identity = ID, Password = "" };
+				con.Identity = ID;
                 client.Connect(con);
                 clients.Add(client);
                 Thread.Sleep(2500);
@@ -82,7 +88,6 @@ namespace TS3ServerInServer {
                 );
                 Console.WriteLine(response.ToString());
                 //var resp = response.ToString();
-                return;
                 Thread.Sleep(500);
                 client.Send("setclientchannelgroup",
                     new CommandParameter("cgid", 11),
