@@ -61,7 +61,7 @@ namespace TS3ServerInServer {
 				//var t = typeof(VersionSign).GetFields();
 				con.VersionSign = VersionSign.VER_WIN_3_UNKNOWN;
 				client.Connect(con);
-				clients.Add(client);
+				clients.Add(client);;
 				Thread.Sleep(2500);
 			}
 			Console.WriteLine("End");
@@ -93,18 +93,25 @@ namespace TS3ServerInServer {
 					if (chan["channel_name"] == channel[0])
 						channel_name_in_use = true; break;
 				}*/
-				ResponseDictionary ret;
+				IEnumerable<ResponseDictionary> ret;
 				/*if (channel_name_in_use) {
 					ret = client.ChannelCreate(channel[0] + "_", namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 				} else {*/
-				ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
+				//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
+				ret = client.Send("channelcreate", new CommandParameter("channel_name"))
 				//}
-				Thread.Sleep(500);
-				client.Send("setclientchannelgroup",
+				//Thread.Sleep(500);
+				foreach (var resp in ret) {
+					foreach (var kvp in resp) {
+						Console.Write(kvp.Key + "=" + kvp.Value + " ");
+					}
+					Console.Write("\r\n");
+				}
+				/*client.Send("setclientchannelgroup",
 					new CommandParameter("cgid", 11),
-					new CommandParameter("cid", ret["channel_id"]),
+					new CommandParameter("cid", ret["cid"]),
 					new CommandParameter("cldbid", 404954)
-				);
+				);*/
 			} catch (Ts3CommandException err) {
 				Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
 			}
