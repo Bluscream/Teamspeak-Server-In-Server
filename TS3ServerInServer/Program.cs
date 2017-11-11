@@ -86,35 +86,53 @@ namespace TS3ServerInServer {
 			Console.WriteLine("Connected id={0} clid={1}", myId, client.ClientId);
 			//var data = client.ClientInfo(client.ClientId);
 			var channel = channels[myId].Split(',');
+			/*var response = client.Send("channellist");
+			var channel_name_in_use = true;
+			foreach (var chan in response) {
+				if (chan["channel_name"] == channel[0])
+					channel_name_in_use = true; break;
+			}*/
+			IEnumerable<ResponseDictionary> ret;
+			/*if (channel_name_in_use) {
+				ret = client.ChannelCreate(channel[0] + "_", namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
+			} else {*/
+			//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			try {
-				/*var response = client.Send("channellist");
-				var channel_name_in_use = true;
-				foreach (var chan in response) {
-					if (chan["channel_name"] == channel[0])
-						channel_name_in_use = true; break;
-				}*/
-				IEnumerable<ResponseDictionary> ret;
-				/*if (channel_name_in_use) {
-					ret = client.ChannelCreate(channel[0] + "_", namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
-				} else {*/
-				//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
-				ret = client.Send("channelcreate", new CommandParameter("channel_name"))
-				//}
-				//Thread.Sleep(500);
-				foreach (var resp in ret) {
-					foreach (var kvp in resp) {
-						Console.Write(kvp.Key + "=" + kvp.Value + " ");
-					}
-					Console.Write("\r\n");
+				ret = client.Send("channelcreate",
+					new CommandParameter("channel_name", channel[0]),
+					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
+					new CommandParameter("channel_needed_talk_power", channel[2]),
+					new CommandParameter("channel_name_phonetic", channel[3])
+				);
+			} catch (Ts3CommandException err){
+				if (err.Message.StartsWith("channel_name_inuse")) {
+					ret = client.Send("channelcreate",
+					new CommandParameter("channel_name", channel[0] + "_"),
+					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
+					new CommandParameter("channel_needed_talk_power", channel[2]),
+					new CommandParameter("channel_name_phonetic", channel[3])
+				);
+				} else {
+					Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
+					return;
 				}
-				/*client.Send("setclientchannelgroup",
-					new CommandParameter("cgid", 11),
-					new CommandParameter("cid", ret["cid"]),
-					new CommandParameter("cldbid", 404954)
-				);*/
-			} catch (Ts3CommandException err) {
-				Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
 			}
+			//}
+			Thread.Sleep(250);
+			string cid = "0";
+			foreach (var resp in ret) {
+				foreach (var kvp in resp) {
+					Console.Write(kvp.Key + "=" + kvp.Value + " ");
+					if (kvp.Key.Equals("cid"))
+						cid = kvp.Value;
+				}
+				Console.Write("\r\n");
+			}
+			client.Send("setclientchannelgroup",
+				new CommandParameter("cgid", 11),
+				new CommandParameter("cid", cid),
+				new CommandParameter("cldbid", 404954)
+			);
 			//client.ClientMove(response., Ts3Crypt.HashPassword(channel[1]));
 		}
 	
