@@ -23,6 +23,7 @@ namespace TS3ServerInServer {
                     e.Cancel = true;
                     for (int i = 0; i < clients.Count; i++) {
                         clients[i]?.Disconnect();
+						Thread.Sleep(1000);
                     }
                     Environment.Exit(0);
                 }
@@ -34,6 +35,7 @@ namespace TS3ServerInServer {
 			con.Address = _con[0];
 			con.Username = _con[1];
 			con.Password = _con[2];
+			//con.VersionSign = VersionSign.VER_WIN_3_1_7_ALPHA;
 			if (!File.Exists("ids.txt")) {
                 using (File.Create("ids.txt")) { }
             }
@@ -53,7 +55,10 @@ namespace TS3ServerInServer {
                     File.AppendAllText("ids.txt", ID.PrivateKeyString + "," + ID.ValidKeyOffset + "\r\n");
                 }
 				con.Identity = ID;
-                client.Connect(con);
+				Array values = Enum.GetValues(typeof(VersionSign));
+				Random random = new Random();
+				con.VersionSign = (VersionSign)values.GetValue(random.Next(values.Length));
+				client.Connect(con);
                 clients.Add(client);
                 Thread.Sleep(2500);
             }
@@ -80,13 +85,15 @@ namespace TS3ServerInServer {
             //var data = client.ClientInfo(client.ClientId);
             var channel = channels[myId].Split(',');
             try {
-                var response = client.Send("channelcreate",
-                    new CommandParameter("channel_name", channel[0]),
-                    new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
-                    new CommandParameter("channel_needed_talk_power", channel[2]),
-                    new CommandParameter("channel_name_phonetic", channel[3])
-                );
-                Console.WriteLine(response.ToString());
+				client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
+				/*var response = client.Send("channelcreate",
+					new CommandParameter("channel_name", channel[0]),
+					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
+					new CommandParameter("channel_needed_talk_power", channel[2]),
+					new CommandParameter("channel_name_phonetic", channel[3])
+				);
+				Console.WriteLine(response.ToString());*/
+				return;
                 //var resp = response.ToString();
                 Thread.Sleep(500);
                 client.Send("setclientchannelgroup",
@@ -94,10 +101,21 @@ namespace TS3ServerInServer {
                     new CommandParameter("cid", 1),
                     new CommandParameter("cldbid", 404954)
                 );
-            } catch (Ts3CommandException) {
-                Console.WriteLine("Error while creating channel " + channel[0]);
-                //client.ClientMove(response., Ts3Crypt.HashPassword(channel[1]));
-            }
+            } catch (Ts3CommandException err) {
+				if (err.Message.StartsWith("channel_name_inuse")) {
+					client.ChannelCreate(channel[0] + "_", namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
+					/*var response = client.Send("channelcreate",
+						new CommandParameter("channel_name", channel[0] + "_"),
+						new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
+						new CommandParameter("channel_needed_talk_power", channel[2]),
+						new CommandParameter("channel_name_phonetic", channel[3])
+					);
+					Console.WriteLine(response.ToString());*/
+				} else {
+					Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
+				}
+				//client.ClientMove(response., Ts3Crypt.HashPassword(channel[1]));
+			}
         }
 
         private static void Client_OnErrorEvent(object sender, CommandError e) {
