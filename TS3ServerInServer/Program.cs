@@ -87,26 +87,18 @@ namespace TS3ServerInServer {
 			//var data = client.ClientInfo(client.ClientId);
 			var channel = channels[myId].Split(',');
 			try {
-				var response = client.Send("channellist");
+				/*var response = client.Send("channellist");
 				var channel_name_in_use = true;
 				foreach (var chan in response) {
 					if (chan["channel_name"] == channel[0])
 						channel_name_in_use = true; break;
-				}
+				}*/
 				ResponseDictionary ret;
-				if (channel_name_in_use) {
+				/*if (channel_name_in_use) {
 					ret = client.ChannelCreate(channel[0] + "_", namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
-				} else {
-					ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
-				}
-				/*var response = client.Send("channelcreate",
-					new CommandParameter("channel_name", channel[0]),
-					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
-					new CommandParameter("channel_needed_talk_power", channel[2]),
-					new CommandParameter("channel_name_phonetic", channel[3])
-				);
-				Console.WriteLine(response.ToString());*/
-				//var resp = response.ToString();
+				} else {*/
+				ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
+				//}
 				Thread.Sleep(500);
 				client.Send("setclientchannelgroup",
 					new CommandParameter("cgid", 11),
