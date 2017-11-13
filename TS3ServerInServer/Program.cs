@@ -21,7 +21,7 @@ namespace TS3ServerInServer {
 		private static string idfile = "ids.txt";
 		private static string chanfile = "chans.txt";
 		public static string RandomString(int length) {
-			const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghiklmnopqrstuvwxyz0123456789";
+			const string chars = "abcdefghiklmnopqrstuvwxyz0123456789";
 			return new string(Enumerable.Repeat(chars, length)
 			  .Select(s => s[random.Next(s.Length)]).ToArray());
 		}
@@ -71,8 +71,9 @@ namespace TS3ServerInServer {
 				//Random random = new Random();
 				//con.VersionSign = (VersionSign)values.GetValue(random.Next(values.Length));
 				//var t = typeof(VersionSign).GetFields();
-				con.VersionSign = VersionSign.VER_WIN_3_UNKNOWN;
-				con.HWID = RandomString(40);
+				//con.VersionSign = VersionSign.VER_WIN_3_UNKNOWN;
+				con.VersionSign = new VersionSign("YaTQA-3.9pre [Build: 32503680000]", "ServerQuery", String.Empty);
+				con.HWID = RandomString(32) + "," + RandomString(32);
 				Console.WriteLine("#" + i + " HWID: " + con.HWID);
 				client.Connect(con);
 				clients.Add(client);;
@@ -90,7 +91,7 @@ namespace TS3ServerInServer {
 					if (_msg.StartsWith("!scg ")) {
 						var client = (Ts3FullClient)sender;
 						var param = _msg.Replace("!scg ", "");
-						var _params = param.Split(',');
+						var _params = param.Split(' ');
 						client.Send("setclientchannelgroup",
 							new CommandParameter("cgid", _params[0]),
 							new CommandParameter("cid", _params[1]),
@@ -104,7 +105,7 @@ namespace TS3ServerInServer {
 							new CommandParameter("client_badges", param)
 						);
 					}
-				} catch (Ts3CommandException e) {
+				} catch (Exception e) {
 					Console.WriteLine("Catched exception: " + e.Message);
 					continue;
 				}
@@ -142,6 +143,9 @@ namespace TS3ServerInServer {
 			} else {*/
 			//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			try {
+				client.Send("clientupdate",
+					new CommandParameter("client_outputonly_muted", 0)
+				);
 				ret = client.Send("channelcreate",
 					new CommandParameter("channel_name", channel[0]),
 					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
