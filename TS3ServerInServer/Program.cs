@@ -87,7 +87,6 @@ namespace TS3ServerInServer {
 			adminCGID = Convert.ToInt32(_con[6]);
 			modCGID = Convert.ToInt32(_con[7]);
 			banCGID = Convert.ToInt32(_con[8]);
-			//con.VersionSign = VersionSign.VER_WIN_3_1_7_ALPHA;
 			if (!File.Exists(idfile)) {
 				using (File.Create(idfile)) { }
 			}
@@ -100,7 +99,7 @@ namespace TS3ServerInServer {
 				client.OnDisconnected += OnDisconnected;
 				client.OnErrorEvent += OnErrorEvent;
 				client.OnTextMessageReceived += OnTextMessageReceived;
-				//client.OnClientMoved += Client_OnClientMoved;
+				client.OnClientMoved += OnClientMoved;
 				var _identity = ids.Select(x => x.Split(',')).ToList();
 				IdentityData ID;
 				try {
@@ -192,7 +191,6 @@ namespace TS3ServerInServer {
 			int myId = Interlocked.Increment(ref cnt);
 			var client = (Ts3FullClient)sender;
 			Console.WriteLine("Connected id={0} clid={1}", myId, client.ClientId);
-			//var data = client.ClientInfo(client.ClientId);
 			var channel = channels[myId].Split(',');
 			/*var response = client.Send("channellist");
 			var channel_name_in_use = true;
@@ -206,7 +204,6 @@ namespace TS3ServerInServer {
 			} else {*/
 			//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			try {
-				//client.Send("clientupdate", new CommandParameter("client_output_muted", 1) );
 				var cmd = new Ts3Command("channelcreate", new List<ICommandPart>() {
 					new CommandParameter("channel_name", channel[0]),
 					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
@@ -225,14 +222,6 @@ namespace TS3ServerInServer {
 				return;
 			}
 			ownerDBID = Convert.ToInt32(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
-			/*foreach (var resp in ret) {
-				foreach (var kvp in resp) {
-					Console.Write(kvp.Key + "=" + kvp.Value + " ");
-					if (kvp.Key.Equals("cid"))
-						cid = kvp.Value;
-				}
-				Console.Write("\r\n");
-			}*/
 			try {
 				client.Send("setclientchannelgroup",
 					new CommandParameter("cgid", modCGID), //TODO Dynamic
@@ -243,7 +232,6 @@ namespace TS3ServerInServer {
 				Console.WriteLine("Error while setting channelgroup " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
 				return;
 			}
-			//client.ClientMove(response., Ts3Crypt.HashPassword(channel[1]));
 		}
 
 		private static void OnTick(object state) {
@@ -258,7 +246,6 @@ namespace TS3ServerInServer {
             if (!client.Connected)
             {
 				Console.WriteLine("Could not connect: " + e.Message + " (" + e.ExtraMessage);
-            	//client.Connect(con);
             }
         }
     }
