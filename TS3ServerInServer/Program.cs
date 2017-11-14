@@ -72,8 +72,8 @@ namespace TS3ServerInServer {
 				//Random random = new Random();
 				//con.VersionSign = (VersionSign)values.GetValue(random.Next(values.Length));
 				//var t = typeof(VersionSign).GetFields();
-				//con.VersionSign = VersionSign.VER_WIN_3_UNKNOWN;
-				con.VersionSign = new VersionSign("YaTQA-3.9pre [Build: 32503680000]", "ServerQuery", String.Empty);
+				con.VersionSign = VersionSign.VER_WIN_3_UNKNOWN;
+				//con.VersionSign = new VersionSign("YaTQA-3.9pre [Build: 32503680000]", "ServerQuery", String.Empty);
 				con.HWID = RandomString(32) + "," + RandomString(32);
 				Console.WriteLine("#" + i + " HWID: " + con.HWID);
 				client.Connect(con);
@@ -138,44 +138,41 @@ namespace TS3ServerInServer {
 				if (chan["channel_name"] == channel[0])
 					channel_name_in_use = true; break;
 			}*/
-			IEnumerable<ResponseDictionary> ret;
+			string cid;
 			/*if (channel_name_in_use) {
 				ret = client.ChannelCreate(channel[0] + "_", namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			} else {*/
 			//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			try {
-				client.Send("clientupdate",
-					new CommandParameter("client_outputonly_muted", 0)
-				);
-				ret = client.Send("channelcreate",
+				//client.Send("clientupdate", new CommandParameter("client_output_muted", 1) );
+				cid = client.Send("channelcreate",
 					new CommandParameter("channel_name", channel[0]),
 					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
 					new CommandParameter("channel_needed_talk_power", channel[2]),
 					new CommandParameter("channel_name_phonetic", channel[3])
-				);
+				).FirstOrDefault()["cid"];
 			} catch (Ts3CommandException err){
 				if (err.Message.StartsWith("channel_name_inuse")) {
-					ret = client.Send("channelcreate",
+					cid = client.Send("channelcreate",
 					new CommandParameter("channel_name", channel[0] + "_"),
 					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
 					new CommandParameter("channel_needed_talk_power", channel[2]),
 					new CommandParameter("channel_name_phonetic", channel[3])
-				);
+				).FirstOrDefault()["cid"];
 				} else {
 					Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
 					return;
 				}
 			}
 			ownerDBID = Convert.ToInt32(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
-			string cid = "0";
-			foreach (var resp in ret) {
+			/*foreach (var resp in ret) {
 				foreach (var kvp in resp) {
 					Console.Write(kvp.Key + "=" + kvp.Value + " ");
 					if (kvp.Key.Equals("cid"))
 						cid = kvp.Value;
 				}
 				Console.Write("\r\n");
-			}
+			}*/
 			try {
 				client.Send("setclientchannelgroup",
 					new CommandParameter("cgid", 11), //TODO Dynamic
