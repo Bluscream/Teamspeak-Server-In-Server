@@ -9,6 +9,12 @@ using System.Linq;
 using System.Threading;
 using System.Data.SQLite;
 using System.Data;
+using ClientUidT = System.String;
+using ClientDbIdT = System.UInt64;
+using ClientIdT = System.UInt16;
+using ChannelIdT = System.UInt64;
+using ServerGroupIdT = System.UInt64;
+using ChannelGroupIdT = System.UInt64;
 
 // ReSharper disable All
 namespace TS3ServerInServer {
@@ -17,12 +23,12 @@ namespace TS3ServerInServer {
 		static int cnt = -1;
 		static string[] channels;
 		static string[] ids;
-		static string ownerUID;
-		private static int ownerDBID;
-		private static int adminCGID = 0;
-		private static int modCGID = 0;
-		private static int banCGID = 0;
-		private static List<ulong> cids;
+		static ClientUidT ownerUID;
+		private static ClientDbIdT ownerDBID;
+		private static ChannelGroupIdT adminCGID = 0;
+		private static ChannelGroupIdT modCGID = 0;
+		private static ChannelGroupIdT banCGID = 0;
+		private static List<ChannelIdT> cids = new List<ChannelIdT>();
 		static ConnectionDataFull con = new ConnectionDataFull();
 		private static Random random = new Random();
 		static private Timer AntiAFK { get; set; }
@@ -30,63 +36,87 @@ namespace TS3ServerInServer {
 		private static string chanfile = "chans.txt";
 		private static string dbfile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TS3Client", "settings.db");
 		private static SQLiteConnection tssettingsdb;
-		private static List<string> done;
+		private static List<ClientUidT> done = new List<ClientUidT>();
 		public static string RandomString(int length) {
 			const string chars = "abcdefghiklmnopqrstuvwxyz0123456789";
 			return new string(Enumerable.Repeat(chars, length)
 			  .Select(s => s[random.Next(s.Length)]).ToArray());
 		}
-		public static FriendStatus isFriend(string uid) {
+		public static FriendStatus isFriend(ClientUidT uid) {
 			var sql = "SELECT * FROM contacts WHERE value LIKE '@param1'";
 			SQLiteCommand cmd = new SQLiteCommand(sql, tssettingsdb);
 			cmd.CommandType = CommandType.Text;
 			cmd.Parameters.Add(new SQLiteParameter("@param1", uid));
+			Console.WriteLine($"{cmd.CommandText}");
 			var reader = cmd.ExecuteReader(); //.ExecuteQuery();
 			while (reader.Read()) {
-				Console.WriteLine("new contact:" + reader["value"].ToString().Replace('\n', ', '));
+				Console.WriteLine("contact:" + reader["value"].ToString().Replace("\n", ", "));
 				var _tmp = reader["value"].ToString().Split('\n');
 				foreach (var item in _tmp) {
+					Console.WriteLine($"item: {item} | item[-1]: {item[-1]}");
 					if (item.StartsWith("Friend"))
 						return (FriendStatus)Convert.ToInt32(item[-1]);
 				}
+				//Console.Write("\r\n");
 			}
 			return FriendStatus.Unknown;
 		}
-		public static IEnumerable<ResponseDictionary> SetClientChannelGroup(Ts3FullClient cli, int cgid, ulong cid, int cldbid) {
+		public static IEnumerable<ResponseDictionary> SetClientChannelGroup(Ts3FullClient cli, ChannelGroupIdT cgid, ChannelIdT cid, ClientDbIdT cldbid) {
+			Console.WriteLine($"Trying to set channelgroup {cgid} for client {cldbid} in channel {cid}");
 			return cli.Send("setclientchannelgroup",
 				new CommandParameter("cgid", cgid),
 				new CommandParameter("cid", cid),
-				new CommandParameter("cldbid", ownerDBID)
+				new CommandParameter("cldbid", cldbid)
 			);
 		}
-		public static void SetAllChannelGroup(Ts3FullClient cli, int cgid, int cldbid) {
+		public static void SetAllChannelGroup(Ts3FullClient cli, ChannelGroupIdT cgid, ClientDbIdT cldbid) {
 			foreach (var cid in cids) {
 				SetClientChannelGroup(cli, cgid, cid, cldbid);
 			}
 		}
+		public static ChannelCreated ChannelCreate(Ts3FullClient cli, string name, string password, int neededTP, string phoname) {
+			var cmd = new Ts3Command("channelcreate", new List<ICommandPart>() {
+					new CommandParameter("channel_name", name),
+					new CommandParameter("channel_password", Ts3Crypt.HashPassword(password)),
+					new CommandParameter("channel_needed_talk_power", neededTP),
+					new CommandParameter("channel_name_phonetic", phoname)
+				});
+			var createdchan = cli.SendSpecialCommand(cmd, NotificationType.ChannelCreated).Notifications.Cast<ChannelCreated>();
+			foreach (var chan in createdchan) {
+				Console.WriteLine("#{0} CID: {1} CNAME: {2}", cli.ClientId, chan.ChannelId, chan.Name);
+				if (chan.Name == name)
+					return chan;
+			}
+			return null;
+		}
+		public static ClientUidT ClientGetUidFromClid(Ts3FullClient cli, ClientIdT clid) {
+			return cli.Send("clientgetuidfromclid", new CommandParameter("clid", clid)).FirstOrDefault()["cluid"].Replace("\\", "");
+		}
 		static void Main() {
 			clients = new List<Ts3FullClient>();
+			channels = File.ReadAllLines(chanfile);
+			var _con = channels[0].Split(',');
+			Console.WriteLine(channels[0]);
+			channels = channels.Skip(1).ToArray();
 			Console.CancelKeyPress += (s, e) => {
 				if (e.SpecialKey == ConsoleSpecialKey.ControlC) {
 					e.Cancel = true;
 					for (int i = 0; i < clients.Count; i++) {
 						clients[i]?.Disconnect();
-						Thread.Sleep(1000);
+						Thread.Sleep(Convert.ToInt32(_con[6]));
 					}
+					tssettingsdb.Close();
+					tssettingsdb.Dispose();
 					Environment.Exit(0);
 				}
 			};
-			channels = File.ReadAllLines(chanfile);
-			var _con = channels[0].Split(',');
-			Console.WriteLine(channels[0]);
-			channels = channels.Skip(1).ToArray();
 			con.Address = _con[0];
 			con.Username = _con[1];
 			con.Password = _con[2];
 			ownerUID = _con[4];
-			adminCGID = Convert.ToInt32(_con[6]);
-			modCGID = Convert.ToInt32(_con[7]);
-			banCGID = Convert.ToInt32(_con[8]);
+			adminCGID = Convert.ToUInt64(_con[7]);
+			modCGID = Convert.ToUInt64(_con[8]);
+			banCGID = Convert.ToUInt64(_con[9]);
 			if (!File.Exists(idfile)) {
 				using (File.Create(idfile)) { }
 			}
@@ -156,28 +186,39 @@ namespace TS3ServerInServer {
 			}
 		}
 
+		private static void CheckClient(object sender, ClientIdT clid) {
+			var cl = (Ts3FullClient)sender;
+			ClientUidT cluid = ClientGetUidFromClid(cl, clid);
+			Console.WriteLine($"clid={clid} cluid={cluid}");
+			if (done.Contains(cluid)) return;
+			var dbid = Convert.ToUInt64(cl.Send("clientgetdbidfromuid", new CommandParameter("cluid", cluid)).FirstOrDefault()["cldbid"]);
+			var friend = isFriend(cluid);
+			Console.WriteLine($"#{clid} dbid={dbid} cluid={cluid} friend={friend}");
+			switch (friend) {
+				case FriendStatus.Blocked:
+					//SetAllChannelGroup(cl, banCGID, dbid);
+					break;
+				case FriendStatus.Friend:
+					//SetAllChannelGroup(cl, modCGID, dbid);
+					break;
+				default:
+					break;
+			}
+			done.Add(cluid);
+		}
+
 		private static void OnClientMoved(object sender, IEnumerable<ClientMoved> e) {
-            foreach (var client in e) {
+			foreach (var client in e) {
 				if (client.InvokerUid == ownerUID)
 					Console.WriteLine(ownerUID + "joined some channel.");
-				if (client.Reason == MoveReason.UserOrChannelMoved && client.InvokerId == client.ClientId) {
-					var cl = (Ts3FullClient)sender;
-					var cluid = (cl.Send("clientgetuidfromclid", new CommandParameter("clid", client.ClientId)).FirstOrDefault()["cluid"]);
-					if (done.Contains(cluid)) return;
-					var dbid = Convert.ToInt32(cl.Send("clientgetdbidfromuid", new CommandParameter("cluid", cluid)).FirstOrDefault()["cldbid"]);
-					switch (isFriend(cluid)) {
-						case FriendStatus.Blocked:
-							SetAllChannelGroup(cl, banCGID, dbid);
-							break;
-						case FriendStatus.Friend:
-							SetAllChannelGroup(cl, modCGID, dbid);
-							break;
-						default:
-							break;
+				if (client.Reason == MoveReason.UserAction) {
+					Console.WriteLine($"#{client.ClientId} {String.Join(",", cids)}.Contains({client.TargetChannelId}) = {cids.Contains(client.TargetChannelId)}");
+					if (cids.Contains(client.TargetChannelId)) {
+						CheckClient((Ts3FullClient)sender, client.ClientId);
 					}
-					done.Add(cluid);
 				}
-            }
+				//Console.WriteLine($"ClientId={client.ClientId} InvokerId={client.InvokerId}  InvokerName={client.InvokerName}  InvokerUid={client.InvokerUid}  NotifyType={client.NotifyType}  Reason={client.Reason} TargetChannelId={client.TargetChannelId}");
+			}
         }
 
 		private static void OnDisconnected(object sender, DisconnectEventArgs e) {
@@ -204,30 +245,16 @@ namespace TS3ServerInServer {
 			} else {*/
 			//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			try {
-				var cmd = new Ts3Command("channelcreate", new List<ICommandPart>() {
-					new CommandParameter("channel_name", channel[0]),
-					new CommandParameter("channel_password", Ts3Crypt.HashPassword(channel[1])),
-					new CommandParameter("channel_needed_talk_power", channel[2]),
-					new CommandParameter("channel_name_phonetic", channel[3])
-				});
-				var createdchan = client.SendSpecialCommand(cmd, NotificationType.ChannelCreated).Notifications.Cast<ChannelCreated>();
-				foreach (var chan in createdchan) {
-					Console.WriteLine("#{0} CID: {1} CNAME: {2}", myId, chan.ChannelId, chan.Name);
-					if (chan.Name == channel[0])
-						cid = chan.ChannelId;
-						cids.Add(cid);
-				}
+				cid = ChannelCreate(client, channel[0], channel[1], Convert.ToInt32(channel[2]), channel[3]).ChannelId;
 			} catch (Ts3CommandException err){
+				if (err.ErrorStatus.Id == Ts3ErrorCode.channel_name_inuse)
+					cid = ChannelCreate(client, channel[0] + "_", channel[1], Convert.ToInt32(channel[2]), channel[3]).ChannelId;
 				Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
-				return;
 			}
-			ownerDBID = Convert.ToInt32(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
+			cids.Add(cid);
+			ownerDBID = Convert.ToUInt64(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
 			try {
-				client.Send("setclientchannelgroup",
-					new CommandParameter("cgid", modCGID), //TODO Dynamic
-					new CommandParameter("cid", cid),
-					new CommandParameter("cldbid", ownerDBID)
-				);
+				SetClientChannelGroup(client, modCGID, cid, ownerDBID);
 			} catch (Ts3CommandException err) {
 				Console.WriteLine("Error while setting channelgroup " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
 				return;
