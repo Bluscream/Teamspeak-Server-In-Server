@@ -38,6 +38,7 @@ namespace TS3ServerInServer {
 		private static string dbfile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TS3Client", "settings.db");
 		private static SQLiteConnection tssettingsdb;
 		private static List<ClientUidT> done = new List<ClientUidT>();
+		private static bool locked = false;
 		public static string RandomString(int length) {
 			const string chars = "abcdefghiklmnopqrstuvwxyz0123456789+/=";
 			return new string(Enumerable.Repeat(chars, length)
@@ -49,14 +50,14 @@ namespace TS3ServerInServer {
 			var sql = $"SELECT value FROM contacts WHERE value LIKE '%IDS={uid}%'";
 			SQLiteCommand cmd = new SQLiteCommand(sql, tssettingsdb);
 			cmd.CommandType = CommandType.Text;
-			Console.WriteLine($"{cmd.CommandText}");
+			//Console.WriteLine($"{cmd.CommandText}");
 			var reader = cmd.ExecuteReader(); //.ExecuteQuery();
 			while (reader.Read()) {
 				string itemStrg = reader["value"].ToString();
-				Console.WriteLine($"contact: {itemStrg.Replace("\n", ", ")}");
+				//Console.WriteLine($"contact: {itemStrg.Replace("\n", ", ")}");
 				string[] _tmp = itemStrg.Split('\n');
 				foreach (string item in _tmp) {
-					Console.WriteLine($"item: {item}");
+					//Console.WriteLine($"item: {item}");
 					if (item.StartsWith("Friend=")) {
 						return (FriendStatus) Enum.Parse(typeof(FriendStatus), item[item.Length - 1].ToString());
 					}
@@ -67,11 +68,15 @@ namespace TS3ServerInServer {
 		}
 		public static IEnumerable<ResponseDictionary> SetClientChannelGroup(Ts3FullClient cli, ChannelGroupIdT cgid, ChannelIdT cid, ClientDbIdT cldbid) {
 			Console.WriteLine($"Trying to set channelgroup {cgid} for client {cldbid} in channel {cid}");
-			return cli.Send("setclientchannelgroup",
-				new CommandParameter("cgid", cgid),
-				new CommandParameter("cid", cid),
-				new CommandParameter("cldbid", cldbid)
-			);
+			try {
+				return cli.Send("setclientchannelgroup",
+					new CommandParameter("cgid", cgid),
+					new CommandParameter("cid", cid),
+					new CommandParameter("cldbid", cldbid)
+				);
+			} catch {
+				return null;
+			}
 		}
 		public static void SetAllChannelGroup(Ts3FullClient cli, ChannelGroupIdT cgid, ClientDbIdT cldbid) {
 			foreach (var cid in cids) {
@@ -213,6 +218,7 @@ namespace TS3ServerInServer {
 
 		private static void OnClientMoved(object sender, IEnumerable<ClientMoved> e) {
 			foreach (var client in e) {
+				locked = true;
 				if (client.InvokerUid == ownerUID)
 					Console.WriteLine(ownerUID + "joined some channel.");
 				if (client.Reason == MoveReason.UserAction) {
@@ -223,6 +229,7 @@ namespace TS3ServerInServer {
 				}
 				//Console.WriteLine($"ClientId={client.ClientId} InvokerId={client.InvokerId}  InvokerName={client.InvokerName}  InvokerUid={client.InvokerUid}  NotifyType={client.NotifyType}  Reason={client.Reason} TargetChannelId={client.TargetChannelId}");
 			}
+			if (locked) locked = false;
 		}
 
 		private static void OnDisconnected(object sender, DisconnectEventArgs e) {
@@ -266,8 +273,12 @@ namespace TS3ServerInServer {
 		}
 
 		private static void OnTick(object state) {
-			foreach (var client in clients) {
-				client.Send("clientupdate", new CommandParameter("client_input_muted", 0));
+			try {
+				foreach (var client in clients) {
+					client.Send("clientupdate", new CommandParameter("client_input_muted", 0));
+				}
+			} catch (InvalidOperationException err){
+				AntiAFK.Dispose();
 			}
 		}
 
