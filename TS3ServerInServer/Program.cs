@@ -131,7 +131,7 @@ namespace TS3ServerInServer {
 		}
 
 		private static void OnConnected(object sender, EventArgs e) {
-			int myId = System.Threading.Interlocked.Increment(ref cnt);
+			int myId = Interlocked.Increment(ref cnt);
 			var client = (Ts3FullClient)sender;
 			Console.WriteLine("Connected id={0} clid={1}", myId, client.ClientId);
 			//var data = client.ClientInfo(client.ClientId);
