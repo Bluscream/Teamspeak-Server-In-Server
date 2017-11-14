@@ -15,11 +15,12 @@ namespace TS3ServerInServer {
 		static int cnt = -1;
 		static string[] channels;
 		static string[] ids;
-		static string owner;
+		static string ownerUID;
 		static ConnectionDataFull con = new ConnectionDataFull();
 		private static Random random = new Random();
 		private static string idfile = "ids.txt";
 		private static string chanfile = "chans.txt";
+		private static int ownerDBID;
 		public static string RandomString(int length) {
 			const string chars = "abcdefghiklmnopqrstuvwxyz0123456789";
 			return new string(Enumerable.Repeat(chars, length)
@@ -44,7 +45,7 @@ namespace TS3ServerInServer {
 			con.Address = _con[0];
 			con.Username = _con[1];
 			con.Password = _con[2];
-			owner = _con[4];
+			ownerUID = _con[4];
 			//con.VersionSign = VersionSign.VER_WIN_3_1_7_ALPHA;
 			if (!File.Exists(idfile)) {
 				using (File.Create(idfile)) { }
@@ -76,7 +77,7 @@ namespace TS3ServerInServer {
 				con.HWID = RandomString(32) + "," + RandomString(32);
 				Console.WriteLine("#" + i + " HWID: " + con.HWID);
 				client.Connect(con);
-				clients.Add(client);;
+				clients.Add(client);
 				Thread.Sleep(2500);
 			}
 			Console.WriteLine("End");
@@ -85,7 +86,7 @@ namespace TS3ServerInServer {
 
 		private static void OnTextMessageReceived(object sender, IEnumerable<TextMessage> msgs) {
 			foreach (var msg in msgs) {
-				if (msg.InvokerUid != owner) { continue; }
+				if (msg.InvokerUid != ownerUID) { continue; }
 				var _msg = msg.Message.ToLower();
 				try {
 					if (_msg.StartsWith("!scg ")) {
@@ -114,8 +115,8 @@ namespace TS3ServerInServer {
 
 		private static void OnClientMoved(object sender, IEnumerable<ClientMoved> e) {
             foreach (var client in e) {
-				if (client.InvokerUid == owner)
-					Console.WriteLine(owner + "joined some channel.");
+				if (client.InvokerUid == ownerUID)
+					Console.WriteLine(ownerUID + "joined some channel.");
             }
         }
 
@@ -165,8 +166,7 @@ namespace TS3ServerInServer {
 					return;
 				}
 			}
-			//}
-			Thread.Sleep(250);
+			ownerDBID = Convert.ToInt32(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
 			string cid = "0";
 			foreach (var resp in ret) {
 				foreach (var kvp in resp) {
@@ -176,14 +176,18 @@ namespace TS3ServerInServer {
 				}
 				Console.Write("\r\n");
 			}
-			return;
-			client.Send("setclientchannelgroup",
-				new CommandParameter("cgid", 11),
-				new CommandParameter("cid", cid),
-				new CommandParameter("cldbid", 404954)
-			);
-			//client.ClientMove(response., Ts3Crypt.HashPassword(channel[1]));
-		}
+			try {
+				client.Send("setclientchannelgroup",
+					new CommandParameter("cgid", 11), //TODO Dynamic
+					new CommandParameter("cid", cid),
+					new CommandParameter("cldbid", ownerDBID)
+				);
+			} catch (Ts3CommandException err) {
+				Console.WriteLine("Error while setting channelgroup " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
+				return;
+			}
+				//client.ClientMove(response., Ts3Crypt.HashPassword(channel[1]));
+			}
 	
         private static void OnErrorEvent(object sender, CommandError e) {
             var client = (Ts3FullClient)sender;
