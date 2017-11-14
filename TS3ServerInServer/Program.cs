@@ -15,6 +15,7 @@ using ClientIdT = System.UInt16;
 using ChannelIdT = System.UInt64;
 using ServerGroupIdT = System.UInt64;
 using ChannelGroupIdT = System.UInt64;
+using System.Text.RegularExpressions;
 
 // ReSharper disable All
 namespace TS3ServerInServer {
@@ -38,24 +39,27 @@ namespace TS3ServerInServer {
 		private static SQLiteConnection tssettingsdb;
 		private static List<ClientUidT> done = new List<ClientUidT>();
 		public static string RandomString(int length) {
-			const string chars = "abcdefghiklmnopqrstuvwxyz0123456789";
+			const string chars = "abcdefghiklmnopqrstuvwxyz0123456789+/=";
 			return new string(Enumerable.Repeat(chars, length)
 			  .Select(s => s[random.Next(s.Length)]).ToArray());
 		}
 		public static FriendStatus isFriend(ClientUidT uid) {
-			var sql = "SELECT * FROM contacts WHERE value LIKE '@param1'";
+			if (!Regex.IsMatch(uid, "^[\\w\\d+/=]+$"))
+				return FriendStatus.Malformed;
+			var sql = $"SELECT value FROM contacts WHERE value LIKE '%IDS={uid}%'";
 			SQLiteCommand cmd = new SQLiteCommand(sql, tssettingsdb);
 			cmd.CommandType = CommandType.Text;
-			cmd.Parameters.Add(new SQLiteParameter("@param1", uid));
 			Console.WriteLine($"{cmd.CommandText}");
 			var reader = cmd.ExecuteReader(); //.ExecuteQuery();
 			while (reader.Read()) {
-				Console.WriteLine("contact:" + reader["value"].ToString().Replace("\n", ", "));
-				var _tmp = reader["value"].ToString().Split('\n');
-				foreach (var item in _tmp) {
-					Console.WriteLine($"item: {item} | item[-1]: {item[-1]}");
-					if (item.StartsWith("Friend"))
-						return (FriendStatus)Convert.ToInt32(item[-1]);
+				string itemStrg = reader["value"].ToString();
+				Console.WriteLine($"contact: {itemStrg.Replace("\n", ", ")}");
+				string[] _tmp = itemStrg.Split('\n');
+				foreach (string item in _tmp) {
+					Console.WriteLine($"item: {item}");
+					if (item.StartsWith("Friend=")) {
+						return (FriendStatus) Enum.Parse(typeof(FriendStatus), item[item.Length - 1].ToString());
+					}
 				}
 				//Console.Write("\r\n");
 			}
@@ -114,7 +118,7 @@ namespace TS3ServerInServer {
 			con.Username = _con[1];
 			con.Password = _con[2];
 			ownerUID = _con[4];
-			adminCGID = Convert.ToUInt64(_con[7]);
+			adminCGID = uint.Parse(_con[7]); //Convert.ToUInt64(_con[7]);
 			modCGID = Convert.ToUInt64(_con[8]);
 			banCGID = Convert.ToUInt64(_con[9]);
 			if (!File.Exists(idfile)) {
@@ -196,10 +200,10 @@ namespace TS3ServerInServer {
 			Console.WriteLine($"#{clid} dbid={dbid} cluid={cluid} friend={friend}");
 			switch (friend) {
 				case FriendStatus.Blocked:
-					//SetAllChannelGroup(cl, banCGID, dbid);
+					SetAllChannelGroup(cl, banCGID, dbid);
 					break;
 				case FriendStatus.Friend:
-					//SetAllChannelGroup(cl, modCGID, dbid);
+					SetAllChannelGroup(cl, modCGID, dbid);
 					break;
 				default:
 					break;
@@ -212,14 +216,14 @@ namespace TS3ServerInServer {
 				if (client.InvokerUid == ownerUID)
 					Console.WriteLine(ownerUID + "joined some channel.");
 				if (client.Reason == MoveReason.UserAction) {
-					Console.WriteLine($"#{client.ClientId} {String.Join(",", cids)}.Contains({client.TargetChannelId}) = {cids.Contains(client.TargetChannelId)}");
+					//Console.WriteLine($"#{client.ClientId} {String.Join(",", cids)}.Contains({client.TargetChannelId}) = {cids.Contains(client.TargetChannelId)}");
 					if (cids.Contains(client.TargetChannelId)) {
 						CheckClient((Ts3FullClient)sender, client.ClientId);
 					}
 				}
 				//Console.WriteLine($"ClientId={client.ClientId} InvokerId={client.InvokerId}  InvokerName={client.InvokerName}  InvokerUid={client.InvokerUid}  NotifyType={client.NotifyType}  Reason={client.Reason} TargetChannelId={client.TargetChannelId}");
 			}
-        }
+		}
 
 		private static void OnDisconnected(object sender, DisconnectEventArgs e) {
 			int myId = Interlocked.Increment(ref cnt);
@@ -246,7 +250,7 @@ namespace TS3ServerInServer {
 			//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			try {
 				cid = ChannelCreate(client, channel[0], channel[1], Convert.ToInt32(channel[2]), channel[3]).ChannelId;
-			} catch (Ts3CommandException err){
+			} catch (Ts3CommandException err) {
 				if (err.ErrorStatus.Id == Ts3ErrorCode.channel_name_inuse)
 					cid = ChannelCreate(client, channel[0] + "_", channel[1], Convert.ToInt32(channel[2]), channel[3]).ChannelId;
 				Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
@@ -267,13 +271,12 @@ namespace TS3ServerInServer {
 			}
 		}
 
-        private static void OnErrorEvent(object sender, CommandError e) {
-            var client = (Ts3FullClient)sender;
-            Console.WriteLine(e.ErrorFormat());
-            if (!client.Connected)
-            {
+		private static void OnErrorEvent(object sender, CommandError e) {
+			var client = (Ts3FullClient)sender;
+			Console.WriteLine(e.ErrorFormat());
+			if (!client.Connected) {
 				Console.WriteLine("Could not connect: " + e.Message + " (" + e.ExtraMessage);
-            }
-        }
-    }
+			}
+		}
+	}
 }
