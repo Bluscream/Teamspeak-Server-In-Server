@@ -125,9 +125,10 @@ namespace TS3ServerInServer {
         }
 
 		private static void OnDisconnected(object sender, DisconnectEventArgs e) {
-			int myId = System.Threading.Interlocked.Increment(ref cnt);
+			int myId = Interlocked.Increment(ref cnt);
 			var client = (Ts3FullClient)sender;
 			Console.WriteLine("Disconnected id={0} clid={1}", myId, client.ClientId);
+			clients.Remove(client);
 		}
 
 		private static void OnConnected(object sender, EventArgs e) {
