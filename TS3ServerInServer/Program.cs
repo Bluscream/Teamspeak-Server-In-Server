@@ -39,26 +39,35 @@ namespace TS3ServerInServer {
 		
 		private static List<ClientUidT> done = new List<ClientUidT>();
 		private static bool locked = false;
+		static void Dispose() {
+			for (int i = 0; i < clients.Count; i++) {
+				clients[i].OnConnected -= OnConnected;
+				clients[i].OnDisconnected += OnDisconnected;
+				clients[i].OnErrorEvent += OnErrorEvent;
+				clients[i].OnTextMessageReceived += OnTextMessageReceived;
+				clients[i].OnClientMoved += OnClientMoved;
+				clients[i].OnClientEnterView += OnClientEnterView;
+				clients[i]?.Disconnect();
+				Thread.Sleep(int.Parse(cfg["general"]["DisconnectSleepMS"]));
+			}
+		}
 		static void Main() {
 			clients = new List<Ts3FullClient>();
 			channels = File.ReadAllLines(chanfile);
 			var parser = new FileIniDataParser();
 			cfg = parser.ReadFile(cfgfile);
-
+			RandomNick rndnick = new RandomNick();
+			rndnick.Init();
 			TSSettings.OpenSettingsDB();
 			Console.CancelKeyPress += (s, e) => {
 				if (e.SpecialKey == ConsoleSpecialKey.ControlC) {
 					e.Cancel = true;
-					for (int i = 0; i < clients.Count; i++) {
-						clients[i]?.Disconnect();
-						Thread.Sleep(int.Parse(cfg["general"]["DisconnectSleepMS"]));
-					}
+					Dispose();
 					TSSettings.CloseSettingsDB();
 					Environment.Exit(0);
 				}
 			};
 			con.Address = cfg["general"]["Address"];
-			con.Username = RandomNick.GetRandomNick(); //cfg["general"]["Nickname"];
 			con.Password = cfg["general"]["ServerPassword"];
 			ownerUID = cfg["general"]["OwnerUID"];
 			adminCGID = uint.Parse(cfg["general"]["adminCGID"]);
@@ -69,6 +78,7 @@ namespace TS3ServerInServer {
 			}
 			ids = File.ReadAllLines(idfile);
 			for (int i = 0; i < channels.Length; i++) {
+				con.Username = rndnick.GetRandomNick(); //cfg["general"]["Nickname"];
 				var client = new Ts3FullClient(EventDispatchType.DoubleThread);
 				client.OnConnected += OnConnected;
 				client.OnDisconnected += OnDisconnected;
@@ -167,7 +177,7 @@ namespace TS3ServerInServer {
 			Console.WriteLine("Connected id={0} clid={1}", myId, client.ClientId);
 			var channel = channels[myId].Split(',');
 			/*var response = client.Send("channellist");
-			var channel_name_in_use = true;
+			var channel_name_in_use = false;
 			foreach (var chan in response) {
 				if (chan["channel_name"] == channel[0])
 					channel_name_in_use = true; break;

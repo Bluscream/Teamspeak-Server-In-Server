@@ -8,26 +8,30 @@ using System.Threading.Tasks;
 namespace TS3ServerInServer {
 	class RandomNick {
 		//private static string[] prefix;
-		private static string[] names;
-		private static string[] names1;
-		private static string[] names2;
-		private static string[] suffix;
-		public static void Main() {
+		private string[] names;
+		private string[] names1;
+		private string[] names2;
+		private string[] suffix;
+
+		public void Init() {
 			//prefix = File.ReadAllLines("names_prefix.txt");
 			names = File.ReadAllLines("names.txt");
 			names1 = File.ReadAllLines("names1.txt");
 			names2 = File.ReadAllLines("names2.txt");
 			suffix = File.ReadAllLines("names_suffix.txt");
 		}
-		public static string GetRandomNick() {
-			var rand = new Random();
+		public string GetRandomNick() {
 			var strBuilder = new StringBuilder();
-			var r = rand.Next(0, 1);
-			switch (r) {
+			Random rand = new Random();
+			switch (rand.Next(0,2)) {
 				case 0:
 					strBuilder.Append(names[rand.Next(names.Length)]);
 					break;
 				case 1:
+					strBuilder.Append(names1[rand.Next(names1.Length)]);
+					strBuilder.Append(names2[rand.Next(names2.Length)]);
+					break;
+				case 2:
 					strBuilder.Append(names1[rand.Next(names1.Length)]);
 					strBuilder.Append(names2[rand.Next(names2.Length)]);
 					break;
