@@ -58,7 +58,7 @@ namespace TS3ServerInServer {
 				}
 			};
 			con.Address = cfg["general"]["Address"];
-			con.Username = cfg["general"]["Nickname"];
+			con.Username = RandomNick.GetRandomNick(); //cfg["general"]["Nickname"];
 			con.Password = cfg["general"]["ServerPassword"];
 			ownerUID = cfg["general"]["OwnerUID"];
 			adminCGID = uint.Parse(cfg["general"]["adminCGID"]);
@@ -132,7 +132,7 @@ namespace TS3ServerInServer {
 						);
 					}
 				} catch (Exception e) {
-					Console.WriteLine("Catched exception: " + e.Message);
+					Console.WriteLine("Catched exception: " + e.Message);					
 					continue;
 				}
 			}
@@ -174,18 +174,16 @@ namespace TS3ServerInServer {
 			}*/
 			ulong cid = 0;
 			/*if (channel_name_in_use) {
-				ret = client.ChannelCreate(channel[0] + "_", namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			} else {*/
-			//ret = client.ChannelCreate(channel[0], namePhonetic: channel[3], password: channel[1], neededTP: Convert.ToInt32(channel[2]));
 			try {
-				cid = Clientlib.ChannelCreate(client, channel[0], channel[1], Convert.ToInt32(channel[2]), channel[3]).ChannelId;
+				cid = Clientlib.ChannelCreate(client, channel[0], channel[1], channel[2], channel[3]).ChannelId;
 			} catch (Ts3CommandException err) {
 				if (err.ErrorStatus.Id == Ts3ErrorCode.channel_name_inuse)
-					cid = Clientlib.ChannelCreate(client, channel[0] + "_", channel[1], Convert.ToInt32(channel[2]), channel[3]).ChannelId;
+					cid = Clientlib.ChannelCreate(client, channel[0] + "_", channel[1], channel[2], channel[3]).ChannelId;
 				Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
 			}
 			cids.Add(cid);
-			ownerDBID = Convert.ToUInt64(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
+			ownerDBID = uint.Parse(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
 			try {
 				Clientlib.SetClientChannelGroup(client, modCGID, cid, ownerDBID);
 			} catch (Ts3CommandException err) {
@@ -218,7 +216,7 @@ namespace TS3ServerInServer {
 			ClientUidT cluid = Clientlib.ClientGetUidFromClid(cl, clid);
 			Console.WriteLine($"clid={clid} cluid={cluid}");
 			if (done.Contains(cluid)) return;
-			var dbid = Convert.ToUInt64(cl.Send("clientgetdbidfromuid", new CommandParameter("cluid", cluid)).FirstOrDefault()["cldbid"]);
+			var dbid = uint.Parse(cl.Send("clientgetdbidfromuid", new CommandParameter("cluid", cluid)).FirstOrDefault()["cldbid"]);
 			var friend = TSSettings.isFriend(cluid);
 			Console.WriteLine($"#{clid} dbid={dbid} cluid={cluid} friend={friend}");
 			switch (friend) {

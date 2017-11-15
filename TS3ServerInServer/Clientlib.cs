@@ -25,12 +25,12 @@ namespace TS3ServerInServer {
 		Unknown = 3,
 		Malformed = 4
 	}
-	static class Clientlib {
-
+	class Clientlib {
+		static Random random = new Random();
 		public static string RandomString(int length) {
 			const string chars = "abcdefghiklmnopqrstuvwxyz0123456789";
 			return new string(Enumerable.Repeat(chars, length)
-			  .Select(s => s[new Random().Next(s.Length)]).ToArray());
+			  .Select(s => s[random.Next(s.Length)]).ToArray());
 		}
 
 		public static IEnumerable<ResponseDictionary> SetClientChannelGroup(Ts3FullClient cli, ChannelGroupIdT cgid, ChannelIdT cid, ClientDbIdT cldbid) {
@@ -52,7 +52,7 @@ namespace TS3ServerInServer {
 			}
 		}
 
-		public static ChannelCreated ChannelCreate(Ts3FullClient cli, string name, string password, int neededTP, string phoname) {
+		public static ChannelCreated ChannelCreate(Ts3FullClient cli, string name, string password, string neededTP, string phoname) {
 			var cmd = new Ts3Command("channelcreate", new List<ICommandPart>() {
 					new CommandParameter("channel_name", name),
 					new CommandParameter("channel_password", Ts3Crypt.HashPassword(password)),
@@ -70,6 +70,11 @@ namespace TS3ServerInServer {
 
 		public static ClientUidT ClientGetUidFromClid(Ts3FullClient cli, ClientIdT clid) {
 			return cli.Send("clientgetuidfromclid", new CommandParameter("clid", clid)).FirstOrDefault()["cluid"].Replace("\\", "");
+		}
+
+		public static ChannelIdT GetMyChannelID(Ts3FullClient sender) {
+			WhoAmI data = sender.WhoAmI();
+			return data.ChannelId;
 		}
 	}
 }

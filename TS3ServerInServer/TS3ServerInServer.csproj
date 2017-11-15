@@ -85,6 +85,8 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <Compile Include="RandomNick.cs" />
+    <Compile Include="Ts3SuperClient.cs" />
     <Compile Include="TSSettings.cs" />
   </ItemGroup>
   <ItemGroup>
