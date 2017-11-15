@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using TS3Client;
 using System.Data.SQLite;
 using System.Data;
 using System.Text.RegularExpressions;
@@ -11,16 +10,24 @@ using ChannelIdT = System.UInt64;
 using ServerGroupIdT = System.UInt64;
 using ChannelGroupIdT = System.UInt64;
 
-namespace TS3ServerInServer
-{
-    class TSSettings {
+namespace TS3ServerInServer {
+
+	public enum FriendStatus {
+		Friend = 0,
+		Blocked = 1,
+		Neutral = 2,
+		Unknown = 3,
+		Malformed = 4
+	}
+
+	class TSSettings {
 		private static string dbfile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TS3Client", "settings.db");
 		private static SQLiteConnection tssettingsdb;
-		public static void OpenSettingsDB() {
+		public static void OpenDB() {
 			tssettingsdb = new SQLiteConnection(String.Format("Data Source={0};Version=3;", dbfile));
 			tssettingsdb.Open();
 		}
-		public static void CloseSettingsDB() {
+		public static void CloseDB() {
 			tssettingsdb.Close();
 			tssettingsdb.Dispose();
 		}

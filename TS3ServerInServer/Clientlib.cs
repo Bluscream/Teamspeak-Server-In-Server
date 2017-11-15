@@ -1,13 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using TS3Client;
 using TS3Client.Commands;
 using TS3Client.Full;
 using TS3Client.Messages;
 using System.Linq;
-using System.Threading;
-using System.Data.SQLite;
 using System.Data;
 using ClientUidT = System.String;
 using ClientDbIdT = System.UInt64;
@@ -15,16 +12,8 @@ using ClientIdT = System.UInt16;
 using ChannelIdT = System.UInt64;
 using ServerGroupIdT = System.UInt64;
 using ChannelGroupIdT = System.UInt64;
-using System.Text.RegularExpressions;
 
 namespace TS3ServerInServer {
-	public enum FriendStatus {
-		Friend = 0,
-		Blocked = 1,
-		Neutral = 2,
-		Unknown = 3,
-		Malformed = 4
-	}
 	class Clientlib {
 		static Random random = new Random();
 		public static string RandomString(int length) {

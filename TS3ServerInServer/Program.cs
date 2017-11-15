@@ -20,38 +20,39 @@ using ChannelGroupIdT = System.UInt64;
 // ReSharper disable All
 namespace TS3ServerInServer {
 	static class Program {
-		static List<Ts3FullClient> clients;
-		static int cnt = -1;
-		static IniData cfg;
-		static string[] channels;
-		static string[] ids;
-		static ClientUidT ownerUID;
-		private static ClientDbIdT ownerDBID;
 		private static ChannelGroupIdT adminCGID = 0; // TODO: Dynamic
-		private static ChannelGroupIdT modCGID = 0; // TODO: Dynamic
 		private static ChannelGroupIdT banCGID = 0; // TODO: Dynamic
+		private static ChannelGroupIdT modCGID = 0; // TODO: Dynamic
+		private static ClientDbIdT ownerDBID;
+		private static ClientUidT ownerUID;
+		private static ConnectionDataFull con = new ConnectionDataFull();
+		private static IniData cfg;
 		private static List<ChannelIdT> cids = new List<ChannelIdT>();
-		static ConnectionDataFull con = new ConnectionDataFull();
-		static private Timer AntiAFK { get; set; }
-		private static string cfgfile = "config.cfg";
-		private static string idfile = "ids.csv";
-		private static string chanfile = "chans.csv";
-		private static bool isExit = false;
-		
 		private static List<ClientUidT> done = new List<ClientUidT>();
+		private static List<Ts3FullClient> clients;
+		private static Timer AntiAFK { get; set; }
+		private static bool isExit = false;
 		private static bool locked = false;
+		private static int cnt = -1;
+		private static string cfgfile = "config.cfg";
+		private static string chanfile = "chans.csv";
+		private static string idfile = "ids.csv";
+		private static string[] channels;
+		private static string[] ids;
 		static void Dispose() {
+			if (isExit) return;
 			isExit = true;
 			for (int i = 0; i < clients.Count; i++) {
 				clients[i].OnConnected -= OnConnected;
-				clients[i].OnDisconnected += OnDisconnected;
-				clients[i].OnErrorEvent += OnErrorEvent;
-				clients[i].OnTextMessageReceived += OnTextMessageReceived;
-				clients[i].OnClientMoved += OnClientMoved;
-				clients[i].OnClientEnterView += OnClientEnterView;
+				clients[i].OnDisconnected -= OnDisconnected;
+				clients[i].OnErrorEvent -= OnErrorEvent;
+				clients[i].OnTextMessageReceived -= OnTextMessageReceived;
+				clients[i].OnClientMoved -= OnClientMoved;
+				clients[i].OnClientEnterView -= OnClientEnterView;
 				clients[i]?.Disconnect();
 				Thread.Sleep(int.Parse(cfg["general"]["DisconnectSleepMS"]));
 			}
+			TSSettings.CloseDB();
 		}
 		static void Main() {
 			AppDomain.CurrentDomain.ProcessExit += new EventHandler(CurrentDomain_ProcessExit);
@@ -61,12 +62,11 @@ namespace TS3ServerInServer {
 			cfg = parser.ReadFile(cfgfile);
 			RandomNick rndnick = new RandomNick();
 			rndnick.Init();
-			TSSettings.OpenSettingsDB();
+			TSSettings.OpenDB();
 			Console.CancelKeyPress += (s, e) => {
 				if (e.SpecialKey == ConsoleSpecialKey.ControlC) {
 					e.Cancel = true;
 					Dispose();
-					TSSettings.CloseSettingsDB();
 					Environment.Exit(0);
 				}
 			};
@@ -118,7 +118,7 @@ namespace TS3ServerInServer {
 			Dispose();
 		}
 
-		#region events
+#region events
 
 		static void CurrentDomain_ProcessExit(object sender, EventArgs e) {
 			Dispose();
@@ -214,7 +214,7 @@ namespace TS3ServerInServer {
 		private static void OnTick(object state) {
 			foreach (var client in clients) {
 				try { client.Send("clientupdate", new CommandParameter("client_input_muted", 0));
-				} catch (InvalidOperationException err) { }
+				} catch (InvalidOperationException) { }
 			}
 		}
 
