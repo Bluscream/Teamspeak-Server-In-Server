@@ -1,8 +1,9 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2005
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TS3ServerInServer", "TS3ServerInServer\TSServerInServer.csproj", "{F3FFC199-E564-4D3B-93EC-D60D26598436}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TS3ServerInServer", "TS3ServerInServer\TS3ServerInServer.csproj", "{F3FFC199-E564-4D3B-93EC-D60D26598436}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TS3Client", "..\TS3AudioBot\TS3Client\TS3Client.csproj", "{0EB99E9D-87E5-4534-A100-55D231C2B6A6}"
 EndProject
