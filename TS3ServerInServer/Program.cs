@@ -23,6 +23,9 @@ namespace TS3ServerInServer {
 		private static ChannelGroupIdT adminCGID = 0; // TODO: Dynamic
 		private static ChannelGroupIdT banCGID = 0; // TODO: Dynamic
 		private static ChannelGroupIdT modCGID = 0; // TODO: Dynamic
+		private static string[] banned_names = { "BAN", "NOT WELCOME" };
+		private static string[] mod_names = { "MOD", "OPERATOR" };
+		private static string[] admin_names = { "ADMIN" };
 		private static ClientDbIdT ownerDBID;
 		private static ClientUidT ownerUID;
 		private static ConnectionDataFull con = new ConnectionDataFull();
@@ -73,9 +76,11 @@ namespace TS3ServerInServer {
 			con.Address = cfg["general"]["Address"];
 			con.Password = cfg["general"]["ServerPassword"];
 			ownerUID = cfg["general"]["OwnerUID"];
+			/*
 			adminCGID = uint.Parse(cfg["general"]["adminCGID"]);
 			modCGID = uint.Parse(cfg["general"]["modCGID"]);
 			banCGID = uint.Parse(cfg["general"]["banCGID"]);
+			*/
 			if (!File.Exists(idfile)) {
 				using (File.Create(idfile)) { }
 			}
@@ -109,6 +114,7 @@ namespace TS3ServerInServer {
 				con.HWID = $"{Clientlib.RandomString(32)},{Clientlib.RandomString(32)}";
 				Console.WriteLine("#" + i + " HWID: " + con.HWID);
 				client.Connect(con);
+				if (i == 0) CheckGroups(client);
 				clients.Add(client);
 				Thread.Sleep(int.Parse(cfg["general"]["ConnectSleepMS"]));
 			}
@@ -214,7 +220,7 @@ namespace TS3ServerInServer {
 		private static void OnTick(object state) {
 			foreach (var client in clients) {
 				try { client.Send("clientupdate", new CommandParameter("client_input_muted", 0));
-				} catch (InvalidOperationException) { }
+				} catch (Exception ex) { Console.WriteLine($"Catched Exception in OnTick: {ex.Message}\r\n{ex.StackTrace}"); }
 			}
 		}
 
@@ -229,6 +235,29 @@ namespace TS3ServerInServer {
 #endregion
 
 #region functions
+
+		private static void CheckGroups(Ts3FullClient client) {
+			var response = Clientlib.GetAllChannelGroups(client);
+			foreach (ChannelGroupListResponse gCLR in response) {
+				if (gCLR.type == PermissionGroupDatabaseType.Regular) {
+					foreach (string name in admin_names) {
+						if (gCLR.cgName.ToString().ToLower().Contains(name.ToLower())) {
+							adminCGID = gCLR.cgID; continue;
+						}
+					}
+					foreach (string name in mod_names) {
+						if (gCLR.cgName.ToString().ToLower().Contains(name.ToLower())) {
+							modCGID = gCLR.cgID; continue;
+						}
+					}
+					foreach (string name in banned_names) {
+						if (gCLR.cgName.ToString().ToLower().Contains(name.ToLower())) {
+							banCGID = gCLR.cgID; continue;
+						}
+					}
+				}
+			}
+		}
 
 		private static void CheckClient(object sender, ClientIdT clid) {
 			var cl = (Ts3FullClient)sender;
