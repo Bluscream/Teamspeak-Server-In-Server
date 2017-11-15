@@ -114,7 +114,6 @@ namespace TS3ServerInServer {
 				con.HWID = $"{Clientlib.RandomString(32)},{Clientlib.RandomString(32)}";
 				Console.WriteLine("#" + i + " HWID: " + con.HWID);
 				client.Connect(con);
-				if (i == 0) CheckGroups(client);
 				clients.Add(client);
 				Thread.Sleep(int.Parse(cfg["general"]["ConnectSleepMS"]));
 			}
@@ -180,15 +179,15 @@ namespace TS3ServerInServer {
 		}
 
 		private static void OnDisconnected(object sender, DisconnectEventArgs e) {
-			int myId = Interlocked.Increment(ref cnt);
 			var client = (Ts3FullClient)sender;
-			Console.WriteLine("Disconnected id={0} clid={1}", myId, client.ClientId);
+			Console.WriteLine("Disconnected id={0} clid={1}", cnt, client.ClientId);
 			clients.Remove(client);
 		}
 
 		private static void OnConnected(object sender, EventArgs e) {
 			int myId = Interlocked.Increment(ref cnt);
 			var client = (Ts3FullClient)sender;
+			if (myId == 0) CheckGroups(client);
 			Console.WriteLine("Connected id={0} clid={1}", myId, client.ClientId);
 			var channel = channels[myId].Split(',');
 			/*var response = client.Send("channellist");
