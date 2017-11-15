@@ -36,10 +36,12 @@ namespace TS3ServerInServer {
 		private static string cfgfile = "config.cfg";
 		private static string idfile = "ids.csv";
 		private static string chanfile = "chans.csv";
+		private static bool isExit = false;
 		
 		private static List<ClientUidT> done = new List<ClientUidT>();
 		private static bool locked = false;
 		static void Dispose() {
+			isExit = true;
 			for (int i = 0; i < clients.Count; i++) {
 				clients[i].OnConnected -= OnConnected;
 				clients[i].OnDisconnected += OnDisconnected;
@@ -79,6 +81,7 @@ namespace TS3ServerInServer {
 			}
 			ids = File.ReadAllLines(idfile);
 			for (int i = 0; i < channels.Length; i++) {
+				if (isExit) return;
 				con.Username = rndnick.GetRandomNick(); //cfg["general"]["Nickname"];
 				var client = new Ts3FullClient(EventDispatchType.DoubleThread);
 				client.OnConnected += OnConnected;

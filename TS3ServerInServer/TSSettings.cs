@@ -25,7 +25,7 @@ namespace TS3ServerInServer
 			tssettingsdb.Dispose();
 		}
 		public static FriendStatus isFriend(ClientUidT uid) {
-			if (!Regex.IsMatch(uid, "^[\\w\\d+/=]+$"))
+			if (!Regex.IsMatch(uid, "^[\\w\\d\\+/]+=$"))
 				return FriendStatus.Malformed;
 			var sql = $"SELECT value FROM contacts WHERE value LIKE '%IDS={uid}%'";
 			SQLiteCommand cmd = new SQLiteCommand(sql, tssettingsdb);
