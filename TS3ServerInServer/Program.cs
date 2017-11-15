@@ -52,6 +52,7 @@ namespace TS3ServerInServer {
 			}
 		}
 		static void Main() {
+			AppDomain.CurrentDomain.ProcessExit += new EventHandler(CurrentDomain_ProcessExit);
 			clients = new List<Ts3FullClient>();
 			channels = File.ReadAllLines(chanfile);
 			var parser = new FileIniDataParser();
@@ -111,9 +112,14 @@ namespace TS3ServerInServer {
 			AntiAFK = new Timer(OnTick, "on", 114*10000, 114*10000);
 			Console.WriteLine("End");
 			Console.ReadLine();
+			Dispose();
 		}
 
-#region events
+		#region events
+
+		static void CurrentDomain_ProcessExit(object sender, EventArgs e) {
+			Dispose();
+		}
 
 		private static void OnClientEnterView(object sender, IEnumerable<ClientEnterView> e) {
 
