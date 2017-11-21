@@ -45,15 +45,18 @@ namespace TS3ServerInServer {
 		static void Dispose() {
 			if (isExit) return;
 			isExit = true;
-			for (int i = 0; i < clients.Count; i++) {
-				clients[i].OnConnected -= OnConnected;
-				clients[i].OnDisconnected -= OnDisconnected;
-				clients[i].OnErrorEvent -= OnErrorEvent;
-				clients[i].OnTextMessageReceived -= OnTextMessageReceived;
-				clients[i].OnClientMoved -= OnClientMoved;
-				clients[i].OnClientEnterView -= OnClientEnterView;
-				clients[i]?.Disconnect();
-				Thread.Sleep(int.Parse(cfg["general"]["DisconnectSleepMS"]));
+			lock (clients) {
+				var _clients = clients.ToArray();
+				foreach (var client in _clients) {
+					client.OnConnected -= OnConnected;
+					client.OnDisconnected -= OnDisconnected;
+					client.OnErrorEvent -= OnErrorEvent;
+					client.OnTextMessageReceived -= OnTextMessageReceived;
+					client.OnClientMoved -= OnClientMoved;
+					client.OnClientEnterView -= OnClientEnterView;
+					client?.Disconnect();
+					Thread.Sleep(int.Parse(cfg["general"]["DisconnectSleepMS"]));
+				}
 			}
 			TSSettings.CloseDB();
 		}
@@ -99,8 +102,9 @@ namespace TS3ServerInServer {
 				IdentityData ID;
 				try {
 					ID = Ts3Crypt.LoadIdentity(_identity[i][0], ulong.Parse(_identity[i][1]));
+					if (i > 0) Thread.Sleep(int.Parse(cfg["general"]["ConnectSleepMS"]));
 				} catch (Exception) {
-					ID = Ts3Crypt.GenerateNewIdentity(int.Parse(cfg["general"]["minLvL"]));
+					ID = Ts3Crypt.GenerateNewIdentity(int.Parse(cfg["general"]["MinLVL"]));
 					File.AppendAllText(idfile, ID.PrivateKeyString + "," + ID.ValidKeyOffset + "\r\n");
 				}
 				Console.WriteLine("#" + i + " UID: " + ID.ClientUid);
@@ -115,7 +119,6 @@ namespace TS3ServerInServer {
 				Console.WriteLine("#" + i + " HWID: " + con.HWID);
 				client.Connect(con);
 				clients.Add(client);
-				Thread.Sleep(int.Parse(cfg["general"]["ConnectSleepMS"]));
 			}
 			AntiAFK = new Timer(OnTick, "on", 114*10000, 114*10000);
 			Console.WriteLine("End");
@@ -214,13 +217,22 @@ namespace TS3ServerInServer {
 				Console.WriteLine("Error while setting channelgroup " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
 				return;
 			}
+			client.Send("clientupdate",
+				new CommandParameter("client_badges", "badges=c9e97536-5a2d-4c8e-a135-af404587a472")
+			);
 		}
 
 		private static void OnTick(object state) {
-			foreach (var client in clients) {
-				try { client.Send("clientupdate", new CommandParameter("client_input_muted", 0));
-				} catch (Exception ex) { Console.WriteLine($"Catched Exception in OnTick: {ex.Message}\r\n{ex.StackTrace}"); }
-			}
+			try {
+				lock (clients) {
+					var bots = clients.ToArray();
+					foreach (var client in clients) {
+						try {
+							client.Send("clientupdate", new CommandParameter("client_input_muted", 0));
+						} catch (Exception ex) { Console.WriteLine($"Catched Exception in OnTick's for loop: {ex.Message}\r\n{ex.StackTrace}"); }
+					}
+				}
+			} catch (Exception ex) { Console.WriteLine($"Catched Exception in OnTick: {ex.Message}\r\n{ex.StackTrace}"); }
 		}
 
 		private static void OnErrorEvent(object sender, CommandError e) {
