@@ -166,11 +166,12 @@ namespace TS3ServerInServer {
 		}
 
 		private static void OnClientMoved(object sender, IEnumerable<ClientMoved> e) {
+			var ownClient = (Ts3FullClient)sender;
 			foreach (var client in e) {
 				locked = true;
 				if (client.InvokerUid == ownerUID)
-					Console.WriteLine(ownerUID + "joined some channel.");
-				if (client.Reason == MoveReason.UserAction) {
+					continue;
+				if (client.Reason == MoveReason.UserAction && Clientlib.GetMyChannelID(ownClient) == client.TargetChannelId) {
 					//Console.WriteLine($"#{client.ClientId} {String.Join(",", cids)}.Contains({client.TargetChannelId}) = {cids.Contains(client.TargetChannelId)}");
 					if (cids.Contains(client.TargetChannelId)) {
 						CheckClient((Ts3FullClient)sender, client.ClientId);
@@ -188,38 +189,42 @@ namespace TS3ServerInServer {
 		}
 
 		private static void OnConnected(object sender, EventArgs e) {
-			int myId = Interlocked.Increment(ref cnt);
-			var client = (Ts3FullClient)sender;
-			if (myId == 0) CheckGroups(client);
-			Console.WriteLine("Connected id={0} clid={1}", myId, client.ClientId);
-			var channel = channels[myId].Split(',');
-			/*var response = client.Send("channellist");
-			var channel_name_in_use = false;
-			foreach (var chan in response) {
-				if (chan["channel_name"] == channel[0])
-					channel_name_in_use = true; break;
-			}*/
-			ulong cid = 0;
-			/*if (channel_name_in_use) {
-			} else {*/
 			try {
-				cid = Clientlib.ChannelCreate(client, channel[0], channel[1], channel[2], channel[3]).ChannelId;
-			} catch (Ts3CommandException err) {
-				if (err.ErrorStatus.Id == Ts3ErrorCode.channel_name_inuse)
-					cid = Clientlib.ChannelCreate(client, channel[0] + "_", channel[1], channel[2], channel[3]).ChannelId;
-				Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
+				int myId = Interlocked.Increment(ref cnt);
+				var client = (Ts3FullClient)sender;
+				if (myId == 0) CheckGroups(client);
+				Console.WriteLine("Connected id={0} clid={1}", myId, client.ClientId);
+				var channel = channels[myId].Split(',');
+				/*var response = client.Send("channellist");
+				var channel_name_in_use = false;
+				foreach (var chan in response) {
+					if (chan["channel_name"] == channel[0])
+						channel_name_in_use = true; break;
+				}*/
+				ulong cid = 0;
+				/*if (channel_name_in_use) {
+				} else {*/
+				try {
+					cid = Clientlib.ChannelCreate(client, channel[0], channel[1], channel[2], channel[3]).ChannelId;
+				} catch (Ts3CommandException err) {
+					if (err.ErrorStatus.Id == Ts3ErrorCode.channel_name_inuse)
+						cid = Clientlib.ChannelCreate(client, channel[0] + "_", channel[1], channel[2], channel[3]).ChannelId;
+					Console.WriteLine("Error while creating channel " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
+				}
+				cids.Add(cid);
+				ownerDBID = uint.Parse(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
+				try {
+					Clientlib.SetClientChannelGroup(client, modCGID, cid, ownerDBID);
+				} catch (Ts3CommandException err) {
+					Console.WriteLine("Error while setting channelgroup " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
+					return;
+				}
+				client.Send("clientupdate",
+					new CommandParameter("client_badges", "badges=c9e97536-5a2d-4c8e-a135-af404587a472")
+				);
+			} catch (Exception ex) {
+				Console.WriteLine($"Catched exception in OnConnected:\n{ex}");
 			}
-			cids.Add(cid);
-			ownerDBID = uint.Parse(client.Send("clientgetdbidfromuid", new CommandParameter("cluid", ownerUID)).FirstOrDefault()["cldbid"]);
-			try {
-				Clientlib.SetClientChannelGroup(client, modCGID, cid, ownerDBID);
-			} catch (Ts3CommandException err) {
-				Console.WriteLine("Error while setting channelgroup " + channel[0] + " " + err.ErrorStatus + "\n" + err.Message);
-				return;
-			}
-			client.Send("clientupdate",
-				new CommandParameter("client_badges", "badges=c9e97536-5a2d-4c8e-a135-af404587a472")
-			);
 		}
 
 		private static void OnTick(object state) {
